@@ -20,29 +20,53 @@ const lru_cache_1 = require("lru-cache");
 dotenv_1.default.config();
 const PORT = process.env.PORT;
 function proxyServer(options) {
+    console.log("OPTIONS inside proxyServer: ", options);
     const app = (0, express_1.default)();
-    const cache = new lru_cache_1.LRUCache({ max: 100 });
+    const cache = new lru_cache_1.LRUCache({
+        max: 100,
+        ttl: 1000 * 60 * 5,
+    });
     app.get("*", (req, res) => __awaiter(this, void 0, void 0, function* () {
-        const originalUrl = new URL(options.origin);
-        const url = new URL(req.originalUrl, originalUrl.href);
-        const cachedResponse = cache.get(url);
+        const cachedKey = req.url;
+        const cachedResponse = cache.get(cachedKey); // getting the extension
         if (cachedResponse) {
-            console.log(`Serving from cache: ${url}`);
+            console.log(`Cache HIT for: ${cachedKey}`);
             res.send(cachedResponse);
+            return;
         }
-        else {
-            try {
-                console.log(`Forwarding request to: ${url.href}`);
-                const response = yield axios_1.default.get(url.href);
-                cache.set(url, response.data);
-                res.send(response.data);
+        try {
+            const baseUrl = new URL(options.origin);
+            const url = new URL(req.baseUrl, baseUrl.href);
+            // console.log(`Request URL: ${req.url}`);
+            // console.log(`Base Origin: ${options.origin}`);
+            // console.log(`Final URL requested from origin: ${url.href}`);
+            const response = yield axios_1.default.get(url.href, {
+                headers: Object.assign(Object.assign({}, req.headers), { host: new URL(options.origin).host }),
+            });
+            console.log(`Cache MISS for: ${cachedKey}`);
+            console.log(`Forwarding request to: ${url}`);
+            cache.set(cachedKey, {
+                headers: response.headers,
+                data: response.data,
+                status: response.status,
+            });
+            res.status(response.status).send(response.data);
+        }
+        catch (error) {
+            console.error("Error fetching from origin:", error.message);
+            if (error.response) {
+                res.status(error.response.status).send(error.response.data);
             }
-            catch (error) {
-                console.error(error);
+            else {
                 res.status(500).send("Internal Server Error");
             }
         }
     }));
+    app.get("/clear-cache", (req, res) => {
+        console.log("Clearing cache...");
+        cache.clear();
+        res.send("Cache cleared!");
+    });
     app.listen(PORT, () => {
         console.log(`Listening on http://localhost:${PORT}`);
     });

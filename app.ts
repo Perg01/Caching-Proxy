@@ -2,13 +2,15 @@ import { Command } from "commander";
 import { proxyServer } from "./index";
 
 const program = new Command();
-
 program
-  .option("--port <port>", "port number")
-  .option("--origin <origin>", "origin url")
-  .option("--clear-cache", "clear cache");
+  .command("start")
+  .requiredOption("--port <port>", "port number")
+  .requiredOption("--origin <origin>", "origin url")
+  .option("--clear-cache <clearcache>", "clear cache")
+  .action((options) => {
+    proxyServer(options);
+  });
+program.parse(process.argv);
 
-program.parse();
-
-const options = program.opts();
-proxyServer(options);
+// // const options = program.opts();
+// console.log("Option: ", options);
