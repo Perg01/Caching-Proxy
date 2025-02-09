@@ -26,9 +26,14 @@ function proxyServer(options) {
         max: 100,
         ttl: 1000 * 60 * 5,
     });
+    app.get("/clear-cache", (req, res) => {
+        console.log("Clearing cache...");
+        cache.clear();
+        res.send("Cache cleared!");
+    });
     app.get("*", (req, res) => __awaiter(this, void 0, void 0, function* () {
         const cachedKey = req.url;
-        const cachedResponse = cache.get(cachedKey); // getting the extension
+        const cachedResponse = cache.get(cachedKey);
         if (cachedResponse) {
             console.log(`Cache HIT for: ${cachedKey}`);
             res.send(cachedResponse);
@@ -37,9 +42,6 @@ function proxyServer(options) {
         try {
             const baseUrl = new URL(options.origin);
             const url = new URL(req.baseUrl, baseUrl.href);
-            // console.log(`Request URL: ${req.url}`);
-            // console.log(`Base Origin: ${options.origin}`);
-            // console.log(`Final URL requested from origin: ${url.href}`);
             const response = yield axios_1.default.get(url.href, {
                 headers: Object.assign(Object.assign({}, req.headers), { host: new URL(options.origin).host }),
             });
@@ -62,11 +64,6 @@ function proxyServer(options) {
             }
         }
     }));
-    app.get("/clear-cache", (req, res) => {
-        console.log("Clearing cache...");
-        cache.clear();
-        res.send("Cache cleared!");
-    });
     app.listen(PORT, () => {
         console.log(`Listening on http://localhost:${PORT}`);
     });

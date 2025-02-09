@@ -19,9 +19,15 @@ export function proxyServer(options: {
     ttl: 1000 * 60 * 5,
   });
 
+  app.get("/clear-cache", (req: Request, res: Response) => {
+    console.log("Clearing cache...");
+    cache.clear();
+    res.send("Cache cleared!");
+  });
+
   app.get("*", async (req: Request, res: Response) => {
     const cachedKey = req.url;
-    const cachedResponse = cache.get(cachedKey); // getting the extension
+    const cachedResponse = cache.get(cachedKey);
 
     if (cachedResponse) {
       console.log(`Cache HIT for: ${cachedKey}`);
@@ -32,9 +38,6 @@ export function proxyServer(options: {
     try {
       const baseUrl = new URL(options.origin);
       const url = new URL(req.baseUrl, baseUrl.href);
-      // console.log(`Request URL: ${req.url}`);
-      // console.log(`Base Origin: ${options.origin}`);
-      // console.log(`Final URL requested from origin: ${url.href}`);
 
       const response = await axios.get(url.href, {
         headers: {
@@ -61,12 +64,6 @@ export function proxyServer(options: {
         res.status(500).send("Internal Server Error");
       }
     }
-  });
-
-  app.get("/clear-cache", (req: Request, res: Response) => {
-    console.log("Clearing cache...");
-    cache.clear();
-    res.send("Cache cleared!");
   });
 
   app.listen(PORT, () => {
